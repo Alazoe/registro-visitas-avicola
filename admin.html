@@ -605,6 +605,7 @@
 <!-- ══ APP ════════════════════════════════════════════════════ -->
 <div id="appContent">
 
+<header>
   <div class="brand">
     <div class="brand-icon">🐓</div>
     <div class="brand-text">
@@ -708,15 +709,17 @@ function slugify(text) {
     .replace(/^-|-$/g,'');
 }
 
-// Auto-fill ID from nombre
-document.getElementById('inputNombre').addEventListener('input', function() {
-  const id = document.getElementById('inputId');
-  if (!id._manuallyEdited) {
-    id.value = slugify(this.value);
-  }
-});
-document.getElementById('inputId').addEventListener('input', function() {
-  this._manuallyEdited = true;
+// Auto-fill ID from nombre - usar DOMContentLoaded para seguridad
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('inputNombre').addEventListener('input', function() {
+    const id = document.getElementById('inputId');
+    if (!id._manuallyEdited) {
+      id.value = slugify(this.value);
+    }
+  });
+  document.getElementById('inputId').addEventListener('input', function() {
+    this._manuallyEdited = true;
+  });
 });
 
 function generarQR() {
@@ -902,11 +905,13 @@ function slugify(text) {
 }
 
 // Init
-renderGranjaList();
-if (granjas.length) {
-  const last = granjas[granjas.length - 1];
-  cargarGranja(last.id);
-}
+document.addEventListener('DOMContentLoaded', function() {
+  renderGranjaList();
+  if (granjas.length) {
+    const last = granjas[granjas.length - 1];
+    cargarGranja(last.id);
+  }
+});
 </script>
 
 </div><!-- /appContent -->

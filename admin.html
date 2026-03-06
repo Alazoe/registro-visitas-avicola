@@ -7,6 +7,113 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
+/* ── PIN LOCK ── */
+#pinLock {
+  position: fixed; inset: 0;
+  background: #0F1108;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 9999;
+  gap: 0;
+}
+
+.pin-box {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 28px; width: 100%; max-width: 320px; padding: 0 24px;
+}
+
+.pin-icon {
+  width: 64px; height: 64px;
+  background: rgba(200,168,75,0.12);
+  border: 1px solid rgba(200,168,75,0.3);
+  border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+}
+
+.pin-title {
+  text-align: center;
+}
+.pin-title h2 {
+  font-family: 'Sora', sans-serif;
+  font-size: 20px; font-weight: 700;
+  color: #F0EBE0; margin-bottom: 6px;
+}
+.pin-title p {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; color: #7A8070;
+  letter-spacing: 0.5px;
+}
+
+/* Dots display */
+.pin-dots {
+  display: flex; gap: 14px; align-items: center; justify-content: center;
+}
+.pin-dot {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(200,168,75,0.4);
+  background: transparent;
+  transition: all 0.15s;
+}
+.pin-dot.filled {
+  background: #C8A84B;
+  border-color: #C8A84B;
+  transform: scale(1.1);
+}
+.pin-dot.error {
+  border-color: #B85C38;
+  background: #B85C38;
+  animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
+
+/* Numpad */
+.pin-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 72px);
+  gap: 12px;
+}
+
+.pin-key {
+  width: 72px; height: 72px;
+  border-radius: 50%;
+  border: 1px solid rgba(143,160,130,0.2);
+  background: #191D10;
+  color: #D8D4C8;
+  font-family: 'Sora', sans-serif;
+  font-size: 22px; font-weight: 600;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.1s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.pin-key:hover  { background: #212718; border-color: rgba(200,168,75,0.4); }
+.pin-key:active { background: rgba(200,168,75,0.15); transform: scale(0.94); }
+.pin-key.empty  { border: none; background: transparent; cursor: default; pointer-events: none; }
+.pin-key.delete { font-size: 18px; color: #7A8070; }
+.pin-key.delete:hover { color: #B85C38; border-color: rgba(184,92,56,0.4); }
+
+.pin-error-msg {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; color: #B85C38;
+  text-align: center; letter-spacing: 0.5px;
+  height: 16px; opacity: 0; transition: opacity 0.2s;
+}
+.pin-error-msg.show { opacity: 1; }
+
+/* Ocultar app hasta autenticar */
+#appContent { display: none; }
+</style>
+<style>
   :root {
     --bg: #0F1108;
     --surface: #191D10;
@@ -461,7 +568,43 @@
 </head>
 <body>
 
-<header>
+<!-- ══ PIN LOCK ══════════════════════════════════════════════ -->
+<div id="pinLock">
+  <div class="pin-box">
+    <div class="pin-icon">🔐</div>
+    <div class="pin-title">
+      <h2>Panel Administrador</h2>
+      <p>Ingresa tu PIN para continuar</p>
+    </div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+      <div class="pin-dot" id="d4"></div>
+      <div class="pin-dot" id="d5"></div>
+    </div>
+    <div class="pin-pad">
+      <button class="pin-key" onclick="pinPress('1')">1</button>
+      <button class="pin-key" onclick="pinPress('2')">2</button>
+      <button class="pin-key" onclick="pinPress('3')">3</button>
+      <button class="pin-key" onclick="pinPress('4')">4</button>
+      <button class="pin-key" onclick="pinPress('5')">5</button>
+      <button class="pin-key" onclick="pinPress('6')">6</button>
+      <button class="pin-key" onclick="pinPress('7')">7</button>
+      <button class="pin-key" onclick="pinPress('8')">8</button>
+      <button class="pin-key" onclick="pinPress('9')">9</button>
+      <button class="pin-key empty"></button>
+      <button class="pin-key" onclick="pinPress('0')">0</button>
+      <button class="pin-key delete" onclick="pinDelete()">⌫</button>
+    </div>
+    <div class="pin-error-msg" id="pinError">PIN incorrecto. Intenta de nuevo.</div>
+  </div>
+</div>
+
+<!-- ══ APP ════════════════════════════════════════════════════ -->
+<div id="appContent">
+
   <div class="brand">
     <div class="brand-icon">🐓</div>
     <div class="brand-text">
@@ -765,5 +908,91 @@ if (granjas.length) {
   cargarGranja(last.id);
 }
 </script>
+
+</div><!-- /appContent -->
+
+<!-- ══ PIN SCRIPT ════════════════════════════════════════════ -->
+<script>
+(function() {
+  const PIN_CORRECTO = '475747';
+  const SESSION_KEY  = 'adminAuth';
+
+  let pinIngresado = '';
+
+  // Si ya autenticó en esta sesión, mostrar app directo
+  if (sessionStorage.getItem(SESSION_KEY) === '1') {
+    desbloquear(false);
+    return;
+  }
+
+  // Teclado físico también funciona
+  document.addEventListener('keydown', function(e) {
+    if (!document.getElementById('pinLock').style.display === 'none') return;
+    if (e.key >= '0' && e.key <= '9') pinPress(e.key);
+    if (e.key === 'Backspace') pinDelete();
+  });
+
+  window.pinPress = function(num) {
+    if (pinIngresado.length >= PIN_CORRECTO.length) return;
+    pinIngresado += num;
+    actualizarDots();
+    if (pinIngresado.length === PIN_CORRECTO.length) {
+      setTimeout(verificar, 120);
+    }
+  };
+
+  window.pinDelete = function() {
+    pinIngresado = pinIngresado.slice(0, -1);
+    actualizarDots();
+    document.getElementById('pinError').classList.remove('show');
+  };
+
+  function actualizarDots() {
+    for (let i = 0; i < PIN_CORRECTO.length; i++) {
+      const dot = document.getElementById('d' + i);
+      dot.classList.toggle('filled', i < pinIngresado.length);
+      dot.classList.remove('error');
+    }
+  }
+
+  function verificar() {
+    if (pinIngresado === PIN_CORRECTO) {
+      sessionStorage.setItem(SESSION_KEY, '1');
+      desbloquear(true);
+    } else {
+      // Animación error
+      for (let i = 0; i < PIN_CORRECTO.length; i++) {
+        const dot = document.getElementById('d' + i);
+        dot.classList.remove('filled');
+        dot.classList.add('error');
+      }
+      document.getElementById('pinError').classList.add('show');
+      pinIngresado = '';
+      setTimeout(() => {
+        for (let i = 0; i < PIN_CORRECTO.length; i++) {
+          document.getElementById('d' + i).classList.remove('error');
+        }
+      }, 600);
+    }
+  }
+
+  function desbloquear(animar) {
+    const lock = document.getElementById('pinLock');
+    const app  = document.getElementById('appContent');
+    if (animar) {
+      lock.style.transition = 'opacity 0.3s';
+      lock.style.opacity = '0';
+      setTimeout(() => {
+        lock.style.display = 'none';
+        app.style.display = '';
+      }, 300);
+    } else {
+      lock.style.display = 'none';
+      app.style.display = '';
+    }
+  }
+})();
+</script>
+
 </body>
 </html>

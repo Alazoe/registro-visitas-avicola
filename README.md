@@ -133,7 +133,13 @@ Cada granja tiene su propia pestaña con las siguientes columnas:
 - Los datos se almacenan en tu propia cuenta de Google Drive
 - El script corre bajo tus credenciales de Google
 - No se comparte información con terceros
-- El acceso al generador de QR (`admin.html`) es público por URL — se recomienda mantener la URL discreta o agregar autenticación si se requiere mayor control
+- `admin.html` está protegido con un PIN de 6 dígitos (pantalla de bloqueo con teclado numérico), con bloqueo temporal tras 5 intentos fallidos.
+  **Importante:** esto es una traba de acceso básica, no una autenticación real. Cualquier página estática (GitHub Pages) expone su HTML/JS completo a quien la visite, así que un secreto embebido ahí — sea texto plano o hash — puede ser reproducido por alguien dispuesto a inspeccionar el código fuente. Sirve para evitar que alguien casual genere QR falsos, no para proteger datos sensibles (los registros de visitas nunca pasan por `admin.html`, viven solo en tu Google Sheet).
+  Si en algún momento necesitas control de acceso real, la validación debe moverse a un backend que tú controles (por ejemplo, una acción de verificación agregada a `Codigo-GAS-Backend.js`, o restringir `admin.html` detrás de un login).
+- La URL del backend (Apps Script `/exec`) queda escrita en el HTML público de `index.html` porque un sitio estático no tiene forma de ocultarla del navegador. Esto significa que, en teoría, cualquiera que la copie desde el código fuente podría hacer POST directo a tu planilla sin pasar por el formulario o el QR. Mitigación recomendada (se hace en `Codigo-GAS-Backend.js`, no en este repo):
+  - Validar en el backend que vengan todos los campos obligatorios antes de escribir en la hoja.
+  - Agregar un límite de tasa simple (por IP o por minuto) para evitar spam masivo.
+  - Opcional: exigir un token fijo en el payload (no es un secreto real tampoco, pero filtra bots genéricos).
 
 ---
 
@@ -154,12 +160,32 @@ Cada granja tiene su propia pestaña con las siguientes columnas:
 
 | Campo | Obligatorio | Notas |
 |---|---|---|
-| Nombre completo | ✅ | |
-| RUT | ✅ | Formato auto: `12.345.678-9` |
-| Empresa / Institución | — | Opcional |
+| Nombre completo | ✅ | Máx. 80 caracteres |
+| RUT | ✅ | Formato auto: `12.345.678-9` + validación del dígito verificador |
+| Empresa / Institución | — | Opcional, máx. 80 caracteres |
 | Motivo de visita | ✅ | Listado predefinido + campo libre |
 | Aves domésticas | ✅ | Activa alerta si responde "Sí" |
-| Observaciones | — | Texto libre |
+| Observaciones | — | Texto libre, máx. 400 caracteres |
+
+---
+
+## 🛠 Panel admin (`admin.html`)
+
+- Protegido con PIN de 6 dígitos (ver [Seguridad y privacidad](#-seguridad-y-privacidad) para las limitaciones reales de esto).
+- Las granjas creadas se guardan en `localStorage` del navegador — son locales a ese dispositivo/navegador, no se sincronizan entre equipos. Cada granja se puede:
+  - **Cargar** (clic en el nombre) para volver a ver su QR.
+  - **Eliminar** del panel (ícono 🗑) — esto solo la quita de la lista local; el QR ya impreso sigue funcionando porque apunta directo a `index.html` con sus parámetros, no depende del panel admin.
+
+---
+
+## 📝 Registro de cambios
+
+**Julio 2026**
+- Corregida una vulnerabilidad de XSS: los datos ingresados por visitantes/admin ya no se insertan en el DOM sin escapar.
+- Agregada validación del dígito verificador del RUT chileno (antes solo se formateaba).
+- Labels del formulario enlazados correctamente a sus campos (`for`/`id`) para accesibilidad con lectores de pantalla.
+- El PIN de `admin.html` ya no está en texto plano en el código fuente (se compara por hash) y se bloquea temporalmente tras 5 intentos fallidos. Ver la nota de seguridad más arriba: sigue sin ser autenticación real, solo una traba más difícil de leer a simple vista.
+- Agregada opción de eliminar granjas guardadas en el panel admin.
 
 ---
 

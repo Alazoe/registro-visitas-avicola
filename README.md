@@ -120,11 +120,14 @@ El sistema:
 
 Cada granja tiene su propia pestaña con las siguientes columnas:
 
-| Folio | Fecha | Hora | Nombre | RUT | Empresa | Motivo | Aves | Observaciones | ⚠ Alerta | Timestamp |
-|---|---|---|---|---|---|---|---|---|---|---|
+| Folio | Fecha | Hora | Nombre | RUT | Empresa | Motivo | Patente | Aves | Observaciones | ⚠ Alerta | Timestamp |
+|---|---|---|---|---|---|---|---|---|---|---|---|
 
 - Las filas de **alerta por aves** aparecen en rojo
 - El **folio** se genera automáticamente (ej: `REG-M5K2J-A3F`)
+- El campo **Patente** es opcional (no todos los visitantes llegan en vehículo) pero se valida su formato si se completa
+
+> ⚠️ El formulario ya envía el campo `patente` en el payload a `Codigo-GAS-Backend.js`, pero como ese archivo vive solo en tu Apps Script (no está en este repo), debes agregar tú mismo la columna **Patente** a la hoja y la línea correspondiente en el backend que escribe la fila (`fila.push(datos.patente || '')` o equivalente, en el mismo orden que las columnas de la tabla).
 
 ---
 
@@ -164,6 +167,7 @@ Cada granja tiene su propia pestaña con las siguientes columnas:
 | RUT | ✅ | Formato auto: `12.345.678-9` + validación del dígito verificador |
 | Empresa / Institución | — | Opcional, máx. 80 caracteres |
 | Motivo de visita | ✅ | Listado predefinido + campo libre |
+| Patente del vehículo | — | Opcional; valida formato chileno (`AB1234` o `BBBB12`) si se completa |
 | Aves domésticas | ✅ | Activa alerta si responde "Sí" |
 | Observaciones | — | Texto libre, máx. 400 caracteres |
 
@@ -179,6 +183,9 @@ Cada granja tiene su propia pestaña con las siguientes columnas:
 ---
 
 ## 📝 Registro de cambios
+
+**Julio 2026 (2)**
+- Agregado campo opcional **Patente del vehículo** en el formulario, con auto-mayúsculas y validación de formato chileno (2 letras + 4 dígitos, o 4 letras + 2 dígitos). Requiere actualizar `Codigo-GAS-Backend.js` para guardar la nueva columna (ver sección [Estructura del Google Sheet](#-estructura-del-google-sheet)).
 
 **Julio 2026**
 - Corregida una vulnerabilidad de XSS: los datos ingresados por visitantes/admin ya no se insertan en el DOM sin escapar.

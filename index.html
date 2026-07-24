@@ -160,6 +160,10 @@
         <label for="otroMotivo">Especifique el motivo</label>
         <input type="text" id="otroMotivo" placeholder="Describir motivo…" maxlength="120">
       </div>
+      <div class="field" style="margin-bottom:0;">
+        <label for="patente">Patente del vehículo</label>
+        <input type="text" id="patente" placeholder="Ej: AB1234 o BBBB12" maxlength="8">
+      </div>
     </div>
 
     <div class="section-label">Riesgo sanitario</div>
@@ -257,6 +261,18 @@ function validarRut(rutStr) {
   return dv === dvEsperado;
 }
 
+// ── PATENTE ─────────────────────────────────────────────────
+document.getElementById('patente').addEventListener('input', function() {
+  this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+});
+
+// Formatos válidos de patente chilena: 2 letras + 4 dígitos (hasta 2007)
+// o 4 letras + 2 dígitos (desde 2007)
+function validarPatente(patenteStr) {
+  const limpia = (patenteStr || '').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  return /^[A-Z]{2}\d{4}$/.test(limpia) || /^[A-Z]{4}\d{2}$/.test(limpia);
+}
+
 // Escapa HTML para evitar inyección al insertar datos del visitante en el DOM
 function escapeHtml(str) {
   return String(str ?? '').replace(/[&<>"']/g, c => ({
@@ -295,6 +311,8 @@ function validate() {
   if (!rutVal) { showError('rut','Ingrese el RUT'); ok=false; }
   else if (!validarRut(rutVal)) { showError('rut','RUT inválido, revise el dígito verificador'); ok=false; }
   if (!document.getElementById('motivo').value)        { showError('motivo','Seleccione el motivo'); ok=false; }
+  const patenteVal = document.getElementById('patente').value.trim();
+  if (patenteVal && !validarPatente(patenteVal)) { showError('patente','Patente inválida (ej: AB1234 o BBBB12)'); ok=false; }
   if (!document.querySelector('input[name="aves"]:checked')) {
     const d = document.createElement('div'); d.className='error-msg'; d.textContent='Seleccione una opción';
     document.querySelector('.aves-options').parentNode.appendChild(d); ok=false;
@@ -317,6 +335,7 @@ async function enviarRegistro() {
   const emp     = document.getElementById('empresa').value.trim();
   let motivo    = document.getElementById('motivo').value;
   if (motivo === 'Otro') motivo = document.getElementById('otroMotivo').value.trim() || 'Otro';
+  const patente = document.getElementById('patente').value.trim();
   const aves    = document.querySelector('input[name="aves"]:checked').value;
   const obs     = document.getElementById('obs').value.trim();
   const fecha   = ingresoTs.toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'});
@@ -324,7 +343,7 @@ async function enviarRegistro() {
 
   const payload = {
     folio, granja: granjaId, granjaNombre: granjaNom, empresaGranja: granjaEmp,
-    nombre, rut, empresa: emp, motivo, aves, obs,
+    nombre, rut, empresa: emp, motivo, patente, aves, obs,
     fecha, hora, timestamp: ingresoTs.toISOString()
   };
 
@@ -345,7 +364,7 @@ async function enviarRegistro() {
       body: JSON.stringify(payload)
     });
 
-    mostrarExito(folio, nombre, rut, emp, motivo, aves, fecha, hora);
+    mostrarExito(folio, nombre, rut, emp, motivo, patente, aves, fecha, hora);
 
   } catch (err) {
     btn.disabled = false;
@@ -355,13 +374,16 @@ async function enviarRegistro() {
   }
 }
 
-function mostrarExito(folio, nombre, rut, empresa, motivo, aves, fecha, hora) {
+function mostrarExito(folio, nombre, rut, empresa, motivo, patente, aves, fecha, hora) {
   const filas = [
     ['Folio', `<span class="folio-badge">${escapeHtml(folio)}</span>`],
     ['Nombre', escapeHtml(nombre)], ['RUT', escapeHtml(rut)], ['Empresa', escapeHtml(empresa||'—')],
     ['Motivo', escapeHtml(motivo)], ['Granja', escapeHtml(granjaNom)],
-    ['Fecha', escapeHtml(fecha)], ['Hora', escapeHtml(hora)], ['Aves domésticas', escapeHtml(aves)],
   ];
+  if (patente) filas.push(['Patente', escapeHtml(patente)]);
+  filas.push(
+    ['Fecha', escapeHtml(fecha)], ['Hora', escapeHtml(hora)], ['Aves domésticas', escapeHtml(aves)]
+  );
   document.getElementById('successDetail').innerHTML =
     filas.map(([k,v]) => `<div class="row"><span class="key">${escapeHtml(k)}</span><span class="val">${v}</span></div>`).join('');
 
@@ -373,7 +395,7 @@ function mostrarExito(folio, nombre, rut, empresa, motivo, aves, fecha, hora) {
 function nuevoRegistro() {
   document.getElementById('formView').style.display = '';
   document.getElementById('successView').classList.remove('show');
-  ['nombre','rut','empresa','obs','otroMotivo'].forEach(id => document.getElementById(id).value = '');
+  ['nombre','rut','empresa','obs','otroMotivo','patente'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('motivo').selectedIndex = 0;
   document.getElementById('otroField').style.display = 'none';
   document.querySelectorAll('input[name="aves"]').forEach(r => r.checked = false);

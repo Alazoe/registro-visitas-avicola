@@ -125,25 +125,25 @@
     <div class="section-label">Identificación del visitante</div>
     <div class="card">
       <div class="field">
-        <label class="required">Nombre completo</label>
-        <input type="text" id="nombre" placeholder="Ej: Juan Pérez González" autocomplete="name">
+        <label class="required" for="nombre">Nombre completo</label>
+        <input type="text" id="nombre" placeholder="Ej: Juan Pérez González" autocomplete="name" maxlength="80" aria-required="true">
       </div>
       <div class="field">
-        <label class="required">RUT</label>
-        <input type="text" id="rut" placeholder="Ej: 12.345.678-9" maxlength="12">
+        <label class="required" for="rut">RUT</label>
+        <input type="text" id="rut" placeholder="Ej: 12.345.678-9" maxlength="12" inputmode="text" aria-required="true">
       </div>
       <div class="field">
-        <label>Empresa / Institución</label>
-        <input type="text" id="empresa" placeholder="Ej: SAG, Empresa, Independiente…">
+        <label for="empresa">Empresa / Institución</label>
+        <input type="text" id="empresa" placeholder="Ej: SAG, Empresa, Independiente…" maxlength="80">
       </div>
     </div>
 
     <div class="section-label">Detalles de la visita</div>
     <div class="card">
       <div class="field">
-        <label class="required">Motivo de visita</label>
+        <label class="required" for="motivo">Motivo de visita</label>
         <div class="select-wrap">
-          <select id="motivo">
+          <select id="motivo" aria-required="true">
             <option value="" disabled selected>Seleccionar motivo…</option>
             <option>Visita técnica veterinaria</option>
             <option>Entrega de insumos / alimento</option>
@@ -157,15 +157,19 @@
         </div>
       </div>
       <div class="field" id="otroField" style="display:none;">
-        <label>Especifique el motivo</label>
-        <input type="text" id="otroMotivo" placeholder="Describir motivo…">
+        <label for="otroMotivo">Especifique el motivo</label>
+        <input type="text" id="otroMotivo" placeholder="Describir motivo…" maxlength="120">
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label for="patente">Patente del vehículo</label>
+        <input type="text" id="patente" placeholder="Ej: AB1234 o BBBB12" maxlength="8">
       </div>
     </div>
 
     <div class="section-label">Riesgo sanitario</div>
     <div class="card">
-      <div class="field">
-        <label class="required">¿Tiene aves domésticas o tuvo contacto con aves en las últimas 48 hrs?</label>
+      <fieldset class="field" style="border:none; padding:0; margin:0 0 18px;">
+        <legend class="required" style="font-size:12px; font-weight:600; color:var(--olive); letter-spacing:0.5px; margin-bottom:8px; text-transform:uppercase;">¿Tiene aves domésticas o tuvo contacto con aves en las últimas 48 hrs?</legend>
         <div class="aves-options">
           <div class="aves-option">
             <input type="radio" name="aves" id="avesNo" value="No">
@@ -176,14 +180,14 @@
             <label class="aves-label" for="avesSi">⚠️ Sí</label>
           </div>
         </div>
-        <div class="alerta-aves" id="alertaAves">
+        <div class="alerta-aves" id="alertaAves" role="alert">
           <span class="alerta-icon">🚨</span>
           <span>Contacto reciente con aves. El encargado debe evaluar el ingreso. Se recomienda cambio de ropa, calzado y desinfección.</span>
         </div>
-      </div>
+      </fieldset>
       <div class="field" style="margin-top:6px;">
-        <label>Observaciones adicionales</label>
-        <textarea id="obs" placeholder="Síntomas en aves propias, viajes recientes, otros antecedentes…"></textarea>
+        <label for="obs">Observaciones adicionales</label>
+        <textarea id="obs" placeholder="Síntomas en aves propias, viajes recientes, otros antecedentes…" maxlength="400"></textarea>
       </div>
     </div>
 
@@ -240,6 +244,42 @@ document.getElementById('rut').addEventListener('input', function() {
   this.value = v;
 });
 
+// Valida el dígito verificador del RUT chileno (módulo 11)
+function validarRut(rutStr) {
+  const limpio = (rutStr || '').replace(/[.\s]/g,'').replace('-','');
+  if (limpio.length < 2) return false;
+  const cuerpo = limpio.slice(0,-1);
+  const dv = limpio.slice(-1).toUpperCase();
+  if (!/^\d+$/.test(cuerpo)) return false;
+  let suma = 0, multiplo = 2;
+  for (let i = cuerpo.length - 1; i >= 0; i--) {
+    suma += parseInt(cuerpo[i], 10) * multiplo;
+    multiplo = multiplo === 7 ? 2 : multiplo + 1;
+  }
+  const resto = 11 - (suma % 11);
+  const dvEsperado = resto === 11 ? '0' : resto === 10 ? 'K' : String(resto);
+  return dv === dvEsperado;
+}
+
+// ── PATENTE ─────────────────────────────────────────────────
+document.getElementById('patente').addEventListener('input', function() {
+  this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+});
+
+// Formatos válidos de patente chilena: 2 letras + 4 dígitos (hasta 2007)
+// o 4 letras + 2 dígitos (desde 2007)
+function validarPatente(patenteStr) {
+  const limpia = (patenteStr || '').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  return /^[A-Z]{2}\d{4}$/.test(limpia) || /^[A-Z]{4}\d{2}$/.test(limpia);
+}
+
+// Escapa HTML para evitar inyección al insertar datos del visitante en el DOM
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[c]));
+}
+
 // ── OTRO MOTIVO ─────────────────────────────────────────────
 document.getElementById('motivo').addEventListener('change', function() {
   document.getElementById('otroField').style.display = this.value === 'Otro' ? 'block' : 'none';
@@ -267,8 +307,12 @@ function showError(id, msg) {
 function validate() {
   clearErrors(); let ok = true;
   if (!document.getElementById('nombre').value.trim()) { showError('nombre','Ingrese el nombre completo'); ok=false; }
-  if (!document.getElementById('rut').value.trim())    { showError('rut','Ingrese el RUT'); ok=false; }
+  const rutVal = document.getElementById('rut').value.trim();
+  if (!rutVal) { showError('rut','Ingrese el RUT'); ok=false; }
+  else if (!validarRut(rutVal)) { showError('rut','RUT inválido, revise el dígito verificador'); ok=false; }
   if (!document.getElementById('motivo').value)        { showError('motivo','Seleccione el motivo'); ok=false; }
+  const patenteVal = document.getElementById('patente').value.trim();
+  if (patenteVal && !validarPatente(patenteVal)) { showError('patente','Patente inválida (ej: AB1234 o BBBB12)'); ok=false; }
   if (!document.querySelector('input[name="aves"]:checked')) {
     const d = document.createElement('div'); d.className='error-msg'; d.textContent='Seleccione una opción';
     document.querySelector('.aves-options').parentNode.appendChild(d); ok=false;
@@ -291,6 +335,7 @@ async function enviarRegistro() {
   const emp     = document.getElementById('empresa').value.trim();
   let motivo    = document.getElementById('motivo').value;
   if (motivo === 'Otro') motivo = document.getElementById('otroMotivo').value.trim() || 'Otro';
+  const patente = document.getElementById('patente').value.trim();
   const aves    = document.querySelector('input[name="aves"]:checked').value;
   const obs     = document.getElementById('obs').value.trim();
   const fecha   = ingresoTs.toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'});
@@ -298,7 +343,7 @@ async function enviarRegistro() {
 
   const payload = {
     folio, granja: granjaId, granjaNombre: granjaNom, empresaGranja: granjaEmp,
-    nombre, rut, empresa: emp, motivo, aves, obs,
+    nombre, rut, empresa: emp, motivo, patente, aves, obs,
     fecha, hora, timestamp: ingresoTs.toISOString()
   };
 
@@ -319,7 +364,7 @@ async function enviarRegistro() {
       body: JSON.stringify(payload)
     });
 
-    mostrarExito(folio, nombre, rut, emp, motivo, aves, fecha, hora);
+    mostrarExito(folio, nombre, rut, emp, motivo, patente, aves, fecha, hora);
 
   } catch (err) {
     btn.disabled = false;
@@ -329,15 +374,18 @@ async function enviarRegistro() {
   }
 }
 
-function mostrarExito(folio, nombre, rut, empresa, motivo, aves, fecha, hora) {
+function mostrarExito(folio, nombre, rut, empresa, motivo, patente, aves, fecha, hora) {
   const filas = [
-    ['Folio', `<span class="folio-badge">${folio}</span>`],
-    ['Nombre', nombre], ['RUT', rut], ['Empresa', empresa||'—'],
-    ['Motivo', motivo], ['Granja', granjaNom],
-    ['Fecha', fecha], ['Hora', hora], ['Aves domésticas', aves],
+    ['Folio', `<span class="folio-badge">${escapeHtml(folio)}</span>`],
+    ['Nombre', escapeHtml(nombre)], ['RUT', escapeHtml(rut)], ['Empresa', escapeHtml(empresa||'—')],
+    ['Motivo', escapeHtml(motivo)], ['Granja', escapeHtml(granjaNom)],
   ];
+  if (patente) filas.push(['Patente', escapeHtml(patente)]);
+  filas.push(
+    ['Fecha', escapeHtml(fecha)], ['Hora', escapeHtml(hora)], ['Aves domésticas', escapeHtml(aves)]
+  );
   document.getElementById('successDetail').innerHTML =
-    filas.map(([k,v]) => `<div class="row"><span class="key">${k}</span><span class="val">${v}</span></div>`).join('');
+    filas.map(([k,v]) => `<div class="row"><span class="key">${escapeHtml(k)}</span><span class="val">${v}</span></div>`).join('');
 
   window.scrollTo({top:0,behavior:'smooth'});
   document.getElementById('formView').style.display = 'none';
@@ -347,7 +395,7 @@ function mostrarExito(folio, nombre, rut, empresa, motivo, aves, fecha, hora) {
 function nuevoRegistro() {
   document.getElementById('formView').style.display = '';
   document.getElementById('successView').classList.remove('show');
-  ['nombre','rut','empresa','obs','otroMotivo'].forEach(id => document.getElementById(id).value = '');
+  ['nombre','rut','empresa','obs','otroMotivo','patente'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('motivo').selectedIndex = 0;
   document.getElementById('otroField').style.display = 'none';
   document.querySelectorAll('input[name="aves"]').forEach(r => r.checked = false);

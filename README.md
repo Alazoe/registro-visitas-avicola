@@ -16,6 +16,11 @@ registro-visitas-avicola/
 ├── index.html                  ← Formulario de registro (la página del QR)
 ├── admin.html                  ← Generador de códigos QR por granja
 ├── Codigo-GAS-Backend.js       ← Backend (Google Apps Script)
+├── carteles/
+│   ├── generar_carteles.py     ← Genera los carteles QR en PDF (A4)
+│   ├── cartel-lr-<sector>.pdf  ← Un cartel por sector de Las Rastras
+│   └── carteles-las-rastras.pdf← Los 4 juntos, para imprimir
+├── assets/                     ← (opcional) logo-las-rastras.png para los carteles
 └── README.md
 ```
 
@@ -27,8 +32,45 @@ registro-visitas-avicola/
 
 | Archivo | URL pública |
 |---|---|
-| Formulario | `https://alazoe.github.io/registro-visitas-avicola/` |
-| Generador QR | `https://alazoe.github.io/registro-visitas-avicola/admin.html` |
+| Formulario | `https://avivet.cl/registro-visitas-avicola/` |
+| Generador QR | `https://avivet.cl/registro-visitas-avicola/admin.html` |
+
+---
+
+## 🏭 Sectores con catálogo: Agrícola Las Rastras
+
+Cada sector tiene su propio QR (URL corta `?s=<id>`), su pestaña en la hoja, su RUP y un folio correlativo propio.
+
+| Sector | RUP | Etapa | URL del QR | Pestaña | Folio |
+|---|---|---|---|---|---|
+| Junquillar | 07.1.01.0171 | Recría | `…/?s=lr-junquillar` | `Las Rastras - Junquillar` | `JQ-000001` |
+| San Francisco | 07.1.09.0505 | Postura | `…/?s=lr-san-francisco` | `Las Rastras - San Francisco` | `SF-000001` |
+| Mariposa | 07.1.09.1386 | Postura | `…/?s=lr-mariposa` | `Las Rastras - Mariposa` | `MP-000001` |
+| Ranquimili | 07.1.01.0170 | Postura | `…/?s=lr-ranquimili` | `Las Rastras - Ranquimili` | `RQ-000001` |
+| PRUEBA | — | — | `…/?s=lr-prueba` | `PRUEBA Las Rastras` | `PR-000001` |
+
+- El sector **PRUEBA** sirve para probar sin tocar datos reales: escribe en su propia pestaña y no manda correos.
+- El catálogo está en dos lugares que deben coincidir: `SECTORES` en `index.html` (lo que ve el visitante) y `SECTORES` en `Codigo-GAS-Backend.js` (lo que manda: nombre de pestaña, RUP, folio y noches de vacío). Para agregar un sector o cambiar un plazo, edita ambos.
+- **Noches de vacío** (de la ficha del plan de bioseguridad): 3 noches tras otro plantel avícola, planta, matadero o aves de traspatio; 2 noches para entrar a Junquillar (recría) desde un sector de postura de Las Rastras. Si el visitante declara un contacto dentro de ese plazo, el registro se guarda igual, pero la pantalla sale en **rojo**: «NO PUEDE INGRESAR sin autorización del Responsable de Bioseguridad», la fila queda en rojo con estado `REQUIERE AUTORIZACIÓN RB` y llega un correo de alerta.
+- Los QR antiguos de otros clientes (`?granja=…&nombre=…&empresa=…`) siguen funcionando igual que antes.
+
+### Carteles QR para imprimir
+
+Los PDF están en [`carteles/`](./carteles/): uno por sector y `carteles-las-rastras.pdf` con los cuatro. Tamaño A4, QR de 12 cm con corrección de errores alta (H). Para regenerarlos (por ejemplo, al tener el logo):
+
+```bash
+pip3 install qrcode reportlab pillow opencv-python
+python3 carteles/generar_carteles.py
+```
+
+El logo es `assets/logo-las-rastras.png` (marca **Huevos de Talca** de Agrícola Las Rastras). Como es apaisado, va arriba del QR y no encima. Para un logo cuadrado se puede agregar `--logo-en-qr`, que lo pone también al centro del QR (ocupa ≤22 % del ancho; la corrección H aguanta ~30 %). El QR y el pie del cartel usan el dominio `avivet.cl/registro-visitas-avicola/` (GitHub Pages con dominio propio). Al terminar, el script rasteriza cada PDF y comprueba con OpenCV que el QR se lee y apunta a la URL correcta; si alguno no se lee, lo avisa y termina con error.
+
+### Pantalla «Ingreso registrado» y cómo el guardia la valida
+
+- Solo aparece si el backend **confirmó** que guardó la fila (el formulario lee la respuesta JSON del Apps Script). Si no hay señal o el servidor falla, el visitante ve «No se guardó el registro» y puede reintentar.
+- Muestra sector, RUP, nombre, folio, fecha y hora del registro, y el resto de los datos.
+- **Anti-captura de pantalla:** tiene un reloj grande con segundos que avanzan y un contador «Registrado hace X min». El guardia solo tiene que comparar la hora con su reloj y ver que los segundos se mueven: una captura vieja no avanza. Después de 15 minutos el pase se pone gris («PASE VENCIDO») y la persona debe registrarse de nuevo.
+- Si el guardia tiene dudas, busca el folio en la pestaña del sector.
 
 ---
 
@@ -97,7 +139,7 @@ Activa GitHub Pages en **Settings → Pages → Branch: main → / (root)**.
 
 ### Crear QR para una granja nueva
 
-1. Ve a `https://alazoe.github.io/registro-visitas-avicola/admin.html`
+1. Ve a `https://avivet.cl/registro-visitas-avicola/admin.html`
 2. Ingresa el nombre de la granja, empresa e ID
 3. Haz clic en **"Generar código QR"**
 4. Descarga la imagen PNG e imprímela
@@ -128,7 +170,28 @@ Cada granja tiene su propia pestaña con las siguientes columnas:
 - El **folio** se genera automáticamente (ej: `REG-M5K2J-A3F`)
 - El campo **Patente** es opcional (no todos los visitantes llegan en vehículo) pero se valida su formato si se completa
 
-> ⚠️ `Codigo-GAS-Backend.js` ya guarda el campo `patente` en este repo, pero **eso no actualiza tu Apps Script automáticamente**: tienes que copiar el archivo actualizado, pegarlo en el editor de Apps Script y crear una **nueva versión** en Implementar → Administrar implementaciones. Si ya tenías granjas registradas antes de este cambio, también corre la función `migrarColumnaPatente()` una vez (incluida en el archivo) para agregar la columna a esas hojas sin desalinear las existentes.
+Desde la versión 2.0 se agregan al final: `Sector`, `RUP`, `Teléfono`, `Lugar contacto aves`, `Tipo contacto aves`, `Fecha último contacto aves`, `Noches desde contacto` y `Estado ingreso` (`AUTORIZADO` / `REQUIERE AUTORIZACIÓN RB`).
+
+> El backend escribe **por nombre de columna**: en pestañas creadas con versiones anteriores agrega las columnas que falten al final y no mueve ni borra nada de lo que ya existe. Ya no hace falta correr `migrarColumnaPatente()`.
+
+---
+
+## 🔁 Actualizar el backend en Apps Script (paso a paso)
+
+Google Apps Script no se sincroniza con git: cada cambio de `Codigo-GAS-Backend.js` hay que pegarlo a mano.
+
+1. Abre la hoja de Google de registros → menú **Extensiones → Apps Script**.
+2. En el editor, abre `Código.gs` (o el archivo que tenga el código), selecciona todo (`Cmd+A`) y bórralo.
+3. Abre [`Codigo-GAS-Backend.js`](./Codigo-GAS-Backend.js) en GitHub → botón **Raw** → copia todo y pégalo en el editor.
+4. Revisa arriba `CONFIG.EMAIL_ALERTA` y, si quieres que el Responsable de Bioseguridad reciba las alertas, escribe su correo en `emailAlerta` de cada sector de Las Rastras.
+5. Guarda (`Cmd+S`).
+6. Prueba sin publicar: arriba elige la función **`probarRegistro`** → **Ejecutar**. La primera vez pide permisos (hoja, correo, propiedades): acéptalos. Debe aparecer la pestaña **`PRUEBA Las Rastras`** con una fila `PR-000001`.
+7. Publica la nueva versión **sin cambiar la URL**: **Implementar → Administrar implementaciones** → lápiz ✏️ de la implementación activa → en *Versión* elige **Nueva versión** → **Implementar**.
+   - No uses «Nueva implementación»: eso crea otra URL y habría que cambiar `SCRIPT_URL` en `index.html`.
+8. Prueba como visitante: abre `https://avivet.cl/registro-visitas-avicola/?s=lr-prueba` en el celular, registra una visita y comprueba que aparece la pantalla verde con folio `PR-…` y la fila en la pestaña de prueba. Repite declarando contacto con aves ayer: la pantalla debe salir en rojo.
+9. Cuando todo esté bien, puedes ocultar o borrar la pestaña `PRUEBA Las Rastras`.
+
+> Orden recomendado: primero pega y publica el backend 2.0, después sube `index.html` a GitHub Pages. El formulario nuevo también funciona con el backend anterior (lee su respuesta y calcula el bloqueo en el navegador), pero sin folio correlativo, sin pestaña por sector del catálogo y sin validación en el servidor.
 
 ---
 
@@ -141,9 +204,11 @@ Cada granja tiene su propia pestaña con las siguientes columnas:
   **Importante:** esto es una traba de acceso básica, no una autenticación real. Cualquier página estática (GitHub Pages) expone su HTML/JS completo a quien la visite, así que un secreto embebido ahí — sea texto plano o hash — puede ser reproducido por alguien dispuesto a inspeccionar el código fuente. Sirve para evitar que alguien casual genere QR falsos, no para proteger datos sensibles (los registros de visitas nunca pasan por `admin.html`, viven solo en tu Google Sheet).
   Si en algún momento necesitas control de acceso real, la validación debe moverse a un backend que tú controles (por ejemplo, una acción de verificación agregada a `Codigo-GAS-Backend.js`, o restringir `admin.html` detrás de un login).
 - La URL del backend (Apps Script `/exec`) queda escrita en el HTML público de `index.html` porque un sitio estático no tiene forma de ocultarla del navegador. Esto significa que, en teoría, cualquiera que la copie desde el código fuente podría hacer POST directo a tu planilla sin pasar por el formulario o el QR. Mitigación recomendada (se implementa en `Codigo-GAS-Backend.js` y luego se pega en Apps Script, no toma efecto solo por estar en este repo):
-  - Validar en el backend que vengan todos los campos obligatorios antes de escribir en la hoja.
-  - Agregar un límite de tasa simple (por IP o por minuto) para evitar spam masivo.
-  - Opcional: exigir un token fijo en el payload (no es un secreto real tampoco, pero filtra bots genéricos).
+  - ✅ (v2.0) El backend valida los campos obligatorios, el dígito verificador del RUT, la patente y la fecha de contacto antes de escribir.
+  - ✅ (v2.0) Los textos que empiezan con `=`, `+`, `-` o `@` se guardan como texto, para que no se ejecuten como fórmulas en Sheets.
+  - ✅ (v2.0) El mismo RUT en el mismo sector dentro de 3 minutos no crea otra fila (evita doble toque o reintentos): devuelve el mismo folio.
+  - Pendiente: límite de tasa general contra envíos masivos.
+- El parámetro `?api=` (apuntar el formulario a otro backend) solo funciona en `localhost`, para pruebas; en GitHub Pages se ignora.
 
 ---
 
@@ -164,13 +229,20 @@ Cada granja tiene su propia pestaña con las siguientes columnas:
 
 | Campo | Obligatorio | Notas |
 |---|---|---|
+| Fecha y hora | ✅ | Las pone el servidor al guardar (hora de Chile) |
 | Nombre completo | ✅ | Máx. 80 caracteres |
-| RUT | ✅ | Formato auto: `12.345.678-9` + validación del dígito verificador |
-| Empresa / Institución | — | Opcional, máx. 80 caracteres |
-| Motivo de visita | ✅ | Listado predefinido + campo libre |
-| Patente del vehículo | — | Opcional; valida formato chileno (`AB1234` o `BBBB12`) si se completa |
-| Aves domésticas | ✅ | Activa alerta si responde "Sí" |
+| RUT | ✅ | Formato auto: `12.345.678-9` + dígito verificador (en el navegador y en el servidor) |
+| Empresa / Institución | ✅ | «Particular» si no viene de una empresa |
+| Teléfono | — | Para trazabilidad si hay que ubicar a la persona |
+| Motivo de visita | ✅ | Listado predefinido + «Otro» con descripción obligatoria |
+| Patente del vehículo | — | Obligatoria si entra en vehículo; valida formato chileno (`AB1234` o `BBBB12`) |
+| Contacto con aves en los últimos N días | ✅ | Sí / No (N según el sector) |
+| ↳ Dónde fue el contacto | ✅ si «Sí» | Otro plantel/planta/matadero · aves de casa · otro sector de la empresa (solo Junquillar) |
+| ↳ Último plantel o lugar | ✅ si «Sí» | Texto |
+| ↳ Fecha del último contacto | ✅ si «Sí» | Calcula las noches de vacío cumplidas |
 | Observaciones | — | Texto libre, máx. 400 caracteres |
+
+Cubre lo que pide la pauta SAG para el registro de visitas y vehículos (fecha, nombre, RUT, empresa, motivo, patente y contacto previo con aves / último plantel visitado). El visitante puede marcar «Recordar mis datos en este celular» para no reescribir nombre, RUT, empresa, teléfono y patente la próxima vez (se guardan solo en su teléfono).
 
 ---
 
@@ -184,6 +256,15 @@ Cada granja tiene su propia pestaña con las siguientes columnas:
 ---
 
 ## 📝 Registro de cambios
+
+**Noviembre 2026 — versión 2.0 (Agrícola Las Rastras)**
+- Un QR por sector (Junquillar, San Francisco, Mariposa, Ranquimili) con URL corta `?s=<id>`; cada sector guarda en su pestaña con RUP y folio correlativo (`JQ-000001`…). Sector `lr-prueba` para probar.
+- Carteles A4 en PDF por sector (`carteles/`), con el logo Huevos de Talca, QR de corrección H con URL de avivet.cl y comprobación automática de lectura (72–300 dpi).
+- Formulario completado según la pauta SAG: empresa obligatoria, teléfono, motivos más detallados, y contacto con aves con lugar, tipo y fecha del último contacto.
+- Se elimina el falso éxito: el `fetch` ya no usa `no-cors`; lee la respuesta JSON del Apps Script y solo muestra «Ingreso registrado» si se guardó.
+- Pantalla grande para el guardia: verde si está autorizado, roja si no cumple las noches de vacío («NO PUEDE INGRESAR sin autorización del Responsable de Bioseguridad»), con reloj en vivo y vencimiento a los 15 minutos contra capturas de pantalla.
+- Backend: validación en el servidor, escritura por nombre de columna (compatible con pestañas antiguas), anti doble envío, protección contra fórmulas, correo de alerta con el estado del ingreso, función `probarRegistro()`.
+- Panel admin: lista de sectores del catálogo y QR con corrección H.
 
 **Julio 2026 (2)**
 - Agregado campo opcional **Patente del vehículo** en el formulario, con auto-mayúsculas y validación de formato chileno (2 letras + 4 dígitos, o 4 letras + 2 dígitos).

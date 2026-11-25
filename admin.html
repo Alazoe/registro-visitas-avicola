@@ -205,14 +205,22 @@
     <div class="section-title" style="margin-top:28px;">URL base del formulario</div>
     <div class="base-url-display">
       URL donde está publicado el formulario.<br>
-      Ej: <strong>https://alazoe.github.io/registro-visitas-avicola/</strong>
+      Ej: <strong>https://avivet.cl/registro-visitas-avicola/</strong>
     </div>
     <div class="field">
       <label>URL del formulario</label>
-      <input type="text" id="inputUrl" placeholder="https://alazoe.github.io/registro-visitas-avicola/">
+      <input type="text" id="inputUrl" placeholder="https://avivet.cl/registro-visitas-avicola/">
     </div>
 
     <button class="btn-gen" onclick="generarQR()">⬛ Generar código QR</button>
+
+    <div class="section-title" style="margin-top:36px;">Sectores con catálogo (QR corto)</div>
+    <div class="base-url-display" style="margin-bottom:12px;">
+      Estos sectores están definidos en <strong>SECTORES</strong> de index.html y del backend:
+      cada uno guarda en su pestaña, con RUP y folio propio. Los carteles para imprimir
+      están en <strong>carteles/</strong>.
+    </div>
+    <div id="sectorList"></div>
 
     <div class="granja-list" id="granjaList"></div>
   </div>
@@ -383,6 +391,7 @@ window.addEventListener('DOMContentLoaded', function() {
 
   // Init app
   renderGranjaList();
+  renderSectorList();
 
   document.getElementById('inputNombre').addEventListener('input', function() {
     const id = document.getElementById('inputId');
@@ -394,6 +403,31 @@ window.addEventListener('DOMContentLoaded', function() {
 
   if (granjas.length) cargarGranja(granjas[granjas.length - 1].id);
 });
+
+// ── SECTORES DEL CATÁLOGO (deben coincidir con index.html) ──
+const SECTORES_CATALOGO = [
+  { id:'lr-junquillar',    nombre:'Junquillar',    empresa:'Agrícola Las Rastras', rup:'07.1.01.0171' },
+  { id:'lr-san-francisco', nombre:'San Francisco', empresa:'Agrícola Las Rastras', rup:'07.1.09.0505' },
+  { id:'lr-mariposa',      nombre:'Mariposa',      empresa:'Agrícola Las Rastras', rup:'07.1.09.1386' },
+  { id:'lr-ranquimili',    nombre:'Ranquimili',    empresa:'Agrícola Las Rastras', rup:'07.1.01.0170' },
+  { id:'lr-prueba',        nombre:'PRUEBA',        empresa:'Agrícola Las Rastras', rup:'solo pruebas' },
+];
+const URL_FORMULARIO = 'https://avivet.cl/registro-visitas-avicola/';
+
+function renderSectorList() {
+  document.getElementById('sectorList').innerHTML = SECTORES_CATALOGO.map(s =>
+    `<div class="granja-item" data-id="${escapeHtml(s.id)}" onclick="cargarSector('${escapeHtml(s.id)}')">
+      <div class="granja-info" style="flex:1;"><h3>${escapeHtml(s.nombre)}</h3><p>${escapeHtml(s.empresa)} · RUP ${escapeHtml(s.rup)}</p></div>
+      <div class="granja-arrow">→</div></div>`).join('');
+}
+
+function cargarSector(id) {
+  const s = SECTORES_CATALOGO.find(x => x.id === id);
+  if (!s) return;
+  const url = URL_FORMULARIO + '?s=' + encodeURIComponent(s.id);
+  currentUrl = url;
+  mostrarQR('Sector ' + s.nombre, s.empresa + ' · RUP ' + s.rup, url, s.id);
+}
 
 // ── APP ───────────────────────────────────────────────────────
 let granjas    = JSON.parse(localStorage.getItem('granjas') || '[]');
@@ -445,7 +479,7 @@ function mostrarQR(nombre, empresa, url, activeId) {
 
   const qrDiv = document.getElementById('qrcode');
   qrDiv.innerHTML = '';
-  new QRCode(qrDiv, { text: url, width: 220, height: 220, colorDark: '#1A1A18', colorLight: '#FFFFFF', correctLevel: QRCode.CorrectLevel.M });
+  new QRCode(qrDiv, { text: url, width: 220, height: 220, colorDark: '#1A1A18', colorLight: '#FFFFFF', correctLevel: QRCode.CorrectLevel.H });
 
   document.querySelectorAll('.granja-item').forEach(el => el.classList.toggle('active', el.dataset.id === activeId));
 }
